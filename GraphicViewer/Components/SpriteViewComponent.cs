@@ -1,6 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+﻿using MacGraphicViewer;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using System;
+using System.IO;
 
 namespace GraphicViewer.Components
 {
@@ -8,7 +11,10 @@ namespace GraphicViewer.Components
     {
         Texture2D _spriteView;
         Texture2D _infoView;
+        Texture2D _selectionBox;
         int _offset;
+        private MouseState _state;
+        private bool _pressed;
 
         public bool ForceRefresh { get; set; }
 
@@ -26,7 +32,8 @@ namespace GraphicViewer.Components
 
         public SpriteViewComponent(GraphicViewerGame game) : base(game)
         {
-            _spriteView = new Texture2D(game.GraphicsDevice, 160, 160);
+            _spriteView = new Texture2D(game.GraphicsDevice, 256, 192);
+            _spriteView.Fill(SpectrumColor.Black);
             _infoView = new Texture2D(game.GraphicsDevice, 1, 1);
             _infoView.SetData(new Color[] { Color.Black });
             Offset = 12804;
@@ -45,6 +52,28 @@ namespace GraphicViewer.Components
 
                 ForceRefresh = false;
                 ShowRowOrderFixed();
+
+
+                if (_selectionBox != null)
+                {
+                    _selectionBox.Dispose();
+                    _selectionBox = null;
+                }
+
+                // Limitation: can only have square selection boxes
+                _selectionBox = new Texture2D(Game.GraphicsDevice, SpriteWidth, SpriteWidth);
+                _selectionBox.Outline(Color.Red, new Color(0, 0, 0, 0));
+            }
+
+            _state = Mouse.GetState();
+            if (!_pressed && _state.LeftButton == ButtonState.Pressed)
+            {
+                _pressed = true;
+            }
+            else if (_pressed && _state.LeftButton == ButtonState.Released)
+            {
+                _pressed = false;
+                SaveAtCursor();
             }
         }
 
@@ -64,8 +93,8 @@ namespace GraphicViewer.Components
             if (SpriteWidth < 8)
                 SpriteWidth = 8;
             
-            if (SpriteWidth > 160)
-                SpriteWidth = 160;
+            if (SpriteWidth > _spriteView.Width)
+                SpriteWidth = _spriteView.Width;
 
             Color[] pixels = new Color[_spriteView.Width * _spriteView.Height];
             int numColumns = SpriteWidth / 8;
@@ -80,9 +109,9 @@ namespace GraphicViewer.Components
                         for (int c = 0; c < bytes.Length; c++)
                         {
                             int actualX = (x + c * 8) + cc * SpriteWidth;
-                            Color[] colors = ByteToColor(bytes[c]);
+                            Color[] colors = Helpers.ByteToColor(bytes[c]);
 
-                            int pixelIndex = (y * 160) + actualX;
+                            int pixelIndex = (y * _spriteView.Width) + actualX;
                             Array.Copy(colors, 0, pixels, pixelIndex, colors.Length);
                         }
                         offset += 2;
@@ -95,128 +124,39 @@ namespace GraphicViewer.Components
             _spriteView.SetData(pixels);
         }
 
-        private void ShowSingleChar()
-        {
-            int offset = _offset;
-
-            int x = 0;
-            int y = 0;
-
-            if (Columns < 0)
-                Columns = 1;
-
-            if (Columns > 16)
-                Columns = 16;
-
-            Color[] pixels = new Color[_spriteView.Width * _spriteView.Height];
-
-            while (y < 16)
-            {
-                for (int i =0; i < Columns; i++)
-                {
-                    byte[] bytes = new byte[8];
-                    Array.Copy(Game.File.Memory, offset, bytes, 0, 8);
-                    
-                    for (int row = 0; row < 8; row++)
-                    {
-                        Color[] colors = ByteToColor(bytes[row]);
-                        int pixelIndex = (y * 8 + row) * _spriteView.Width + x;
-                        Array.Copy(colors, 0, pixels, pixelIndex, 8);
-                    }
-                    offset += 8;
-                    x += 8;
-                }
-
-                y++;
-                x = 0;
-            }
-
-
-            _spriteView.SetData(pixels);
-        }
-
-        private void ShowRowOrder()
-        {
-            Color[] pixels = new Color[_spriteView.Width * _spriteView.Height];
-            var data = Game.File.Memory;
-            int offset = _offset;
-            for (int j = 0; j < 100; j++)
-            {
-                for (int y = 0; y < 2; y++)
-                {
-                    for (int x = 0; x < 2; x++)
-                    {
-                        for (int i = 0; i < 8; i++)
-                        {
-                            int jy = j / 10;
-                            int jx = j % 10;
-
-                            Color[] bits = ByteToColor(data[offset++]);
-                            int yy = jy * 2 + y;
-                            int xx = jx * 2 + x;
-                            Array.Copy(bits, 0, pixels, (160 * (i + (yy * 8))) + (xx * 8), bits.Length);
-                        }
-                    }
-                }
-            }
-
-            _spriteView.SetData(pixels);
-        }
-
-        private void ShowColumnOrder()
-        {
-            Color[] pixels = new Color[_spriteView.Width * _spriteView.Height];
-            var data = Game.File.Memory;
-            int offset = _offset;
-            for (int j = 0; j < 100; j++)
-            {
-                for (int x = 0; x < 2; x++)
-                {
-                    for (int y = 0; y < 2; y++)
-                    {
-                        for (int i = 0; i < 8; i++)
-                        {
-                            int jy = j / 10;
-                            int jx = j % 10;
-
-                            Color[] bits = ByteToColor(data[offset++]);
-                            int yy = jy * 2 + y;
-                            int xx = jx * 2 + x;
-                            Array.Copy(bits, 0, pixels, (160 * (i + (yy * 8))) + (xx * 8), bits.Length);
-                        }
-                    }
-                }
-            }
-
-            _spriteView.SetData(pixels);
-        }
-
-        private Color[] ByteToColor(byte b)
-        {
-            Color[] colors = new Color[8];
-            int index = 0;
-            int bit = 7;
-            while (bit >= 0)
-            {
-                int mask = 1 << bit;
-                if ((b & mask) == mask)
-                {
-                    colors[index++] = SpectrumColor.White;
-                }
-                else
-                {
-                    colors[index++] = SpectrumColor.Black;
-                }
-                bit--;
-            }
-            return colors;
-        }
 
         public override void Draw(GameTime gameTime)
         {
             Game.Buffer.Draw(_spriteView, Vector2.Zero, Color.White);
-            Game.Buffer.Draw(_infoView, new Rectangle(0, 160, 256, 4 * 8), Color.Black);
+            //Game.Buffer.Draw(_infoView, new Rectangle(0, 160, 256, 4 * 8), Color.Black);
+            
+            if (_selectionBox != null)
+            {
+                // This screen is four times smaller than the game window. So the mouse x- and y- pos have
+                // to be transformed into Spectrum screen space (256x192)
+                Vector2 cursorPos = new Vector2(_state.X/4 - SpriteWidth / 2, _state.Y/4 - SpriteWidth / 2);
+                Game.Buffer.Draw(_selectionBox, cursorPos, Color.White);
+            }
+
             base.Draw(gameTime);
+        }
+
+
+        private void SaveAtCursor()
+        {
+            int x = _state.X / 4 - SpriteWidth / 2;
+            int y = _state.Y / 4 - SpriteWidth / 2;
+
+            if (x < 0 || x > 256 - SpriteWidth || y < 0 || y > 192 - SpriteWidth)
+                return;
+
+            Texture2D tex = _spriteView.GetSubTexture(Game.GraphicsDevice, new Rectangle(x, y, SpriteWidth, SpriteWidth));
+
+            string fileName =   Path.GetRandomFileName() + ".png";
+            using(Stream s = File.OpenWrite(fileName))
+            {
+                tex.SaveAsPng(s, SpriteWidth, SpriteWidth);
+            }
         }
     }
 }
