@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32505.426
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphicViewer", "GraphicViewer\MacGraphicViewer.csproj", "{A91F49EE-6CD8-48EB-A0DE-1D557405F09F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A91F49EE-6CD8-48EB-A0DE-1D557405F09F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A91F49EE-6CD8-48EB-A0DE-1D557405F09F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A91F49EE-6CD8-48EB-A0DE-1D557405F09F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A91F49EE-6CD8-48EB-A0DE-1D557405F09F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6572DF13-F09A-4C67-BBEF-19738C53234C}
+	EndGlobalSection
+EndGlobal
